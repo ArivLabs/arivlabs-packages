@@ -19,13 +19,16 @@ import { createLogger } from '@arivlabs/logger';
 // Create a logger for your service
 const logger = createLogger({ service: 'api-gateway' });
 
-// Basic logging
+// Basic logging - intuitive style (recommended)
+logger.info('Server started', { port: 3000 });
+logger.error('Something failed', { error: err.message });
+
+// Also works: pino native style
 logger.info({ msg: 'Server started', port: 3000 });
-logger.error({ msg: 'Something failed', error: err.message });
 
 // Domain-specific logging
 const discoveryLog = logger.domain('discovery');
-discoveryLog.info({ msg: 'Job created', jobId: '123' });
+discoveryLog.info('Job created', { jobId: '123' });
 
 // Request context logging
 const reqLog = logger.withContext({
@@ -33,7 +36,7 @@ const reqLog = logger.withContext({
   tenantId: 'tenant-1',
   domain: 'discovery',
 });
-reqLog.info({ msg: 'Processing request' });
+reqLog.info('Processing request');
 ```
 
 ## CloudWatch Insights Queries
