@@ -21,7 +21,10 @@ const logger = createLogger({ service: 'api-gateway' });
 
 // Basic logging - intuitive style (recommended)
 logger.info('Server started', { port: 3000 });
-logger.error('Something failed', { error: err.message });
+
+// Error logging - use { err } for proper serialization
+logger.error('Request failed', { err: error }); // ✅ Correct
+// logger.error('Request failed', { error: err.message }); // ❌ Loses type/stack
 
 // Also works: pino native style
 logger.info({ msg: 'Server started', port: 3000 });
@@ -99,6 +102,30 @@ Pretty output (development):
 ```
 10:30:00 Z [api-gateway:discovery] abc-123 Job created
 ```
+
+## Error Logging Best Practices
+
+Always use `{ err: errorObject }` when logging errors:
+
+```typescript
+try {
+  await someOperation();
+} catch (error) {
+  // ✅ Correct - pino serializes the full error
+  logger.error('Operation failed', { err: error });
+
+  // ❌ Bad - loses error type, stack, and custom properties
+  logger.error('Operation failed', { error: error.message });
+  logger.error('Operation failed', { error: error.message, stack: error.stack });
+}
+```
+
+Pino's error serializer captures:
+
+- Error name/type (e.g., `TypeError`, `ValidationError`)
+- Error message
+- Stack trace
+- Custom error properties
 
 ## Available Domains
 

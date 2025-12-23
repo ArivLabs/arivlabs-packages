@@ -5,6 +5,17 @@ All notable changes to `@arivlabs/logger` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2024-12-23
+
+### Added
+
+- **Proper error logging**: `LogData` type now explicitly supports `err` property for Error objects
+- Pino's error serializer properly captures error type, message, stack, and custom properties
+
+### Changed
+
+- Updated documentation to show correct error logging pattern: `{ err: error }` instead of `{ error: err.message }`
+
 ## [1.1.0] - 2024-12-23
 
 ### Added

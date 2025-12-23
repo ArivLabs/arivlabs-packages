@@ -48,8 +48,16 @@ export interface LoggerConfig {
 
 /**
  * Log data object
+ * Use `err` property for Error objects - pino will serialize them properly
+ *
+ * @example
+ * logger.error('Request failed', { err: error }); // Correct - uses pino's error serializer
+ * logger.error('Request failed', { error: err.message }); // Bad - loses error type/stack
  */
-export type LogData = Record<string, unknown>;
+export type LogData = Record<string, unknown> & {
+  /** Pass Error objects here for proper serialization (type, message, stack, custom props) */
+  err?: Error | unknown;
+};
 
 /**
  * Flexible log method signature supporting multiple calling conventions
@@ -178,7 +186,10 @@ function wrapLogger(pinoLogger: PinoLogger): ArivLogger {
  *
  * // Basic logging (intuitive style - recommended)
  * logger.info('Server started', { port: 3000 });
- * logger.error('Request failed', { error: err.message });
+ *
+ * // Error logging - use { err } for proper serialization
+ * logger.error('Request failed', { err: error }); // ✅ Correct
+ * logger.error('Request failed', { error: err.message }); // ❌ Bad - loses info
  *
  * // Also works: pino native style
  * logger.info({ msg: 'Server started', port: 3000 });
