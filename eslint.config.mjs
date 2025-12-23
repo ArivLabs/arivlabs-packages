@@ -5,13 +5,7 @@ export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    ignores: [
-      '**/node_modules/**',
-      '**/dist/**',
-      '**/coverage/**',
-      '**/*.js',
-      '**/*.mjs',
-    ],
+    ignores: ['**/node_modules/**', '**/dist/**', '**/coverage/**', '**/*.js', '**/*.mjs'],
   },
   {
     files: ['**/*.ts'],
@@ -23,19 +17,25 @@ export default tseslint.config(
     },
     rules: {
       '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-unused-vars': ['error', {
-        argsIgnorePattern: '^_',
-        varsIgnorePattern: '^_',
-        caughtErrorsIgnorePattern: '^_',
-      }],
-      '@typescript-eslint/consistent-type-imports': ['error', {
-        prefer: 'type-imports',
-        disallowTypeAnnotations: false,
-      }],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
+      '@typescript-eslint/consistent-type-imports': [
+        'error',
+        {
+          prefer: 'type-imports',
+          disallowTypeAnnotations: false,
+        },
+      ],
       '@typescript-eslint/no-empty-function': 'off',
       'no-console': 'warn',
-      'curly': ['error', 'all'],
-      'eqeqeq': ['error', 'always', { null: 'ignore' }],
+      curly: ['error', 'all'],
+      eqeqeq: ['error', 'always', { null: 'ignore' }],
       'prefer-const': 'error',
       'no-var': 'error',
     },
@@ -46,5 +46,5 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'off',
       'no-console': 'off',
     },
-  },
+  }
 );

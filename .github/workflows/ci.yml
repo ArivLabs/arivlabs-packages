@@ -11,24 +11,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 9
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'pnpm'
-      
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      
+
       - name: Lint
         run: pnpm lint
-      
+
       - name: Format check
         run: pnpm format:check
 
@@ -37,24 +37,24 @@ jobs:
     needs: lint
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 9
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'pnpm'
-      
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      
+
       - name: Build
         run: pnpm build
-      
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -69,30 +69,30 @@ jobs:
         node-version: [20, 22]
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 9
-      
+
       - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'pnpm'
-      
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      
+
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
           name: dist
           path: packages
-      
+
       - name: Test
         run: pnpm test
-      
+
       - name: Security audit
         run: pnpm audit --audit-level=high || true
 
@@ -102,29 +102,29 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       contents: read
-      id-token: write  # Required for npm provenance
-    
+      id-token: write # Required for npm provenance
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 9
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'pnpm'
           registry-url: 'https://registry.npmjs.org'
-      
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      
+
       - name: Build
         run: pnpm build
-      
+
       - name: Check if @arivlabs/logger version changed
         id: logger-version
         run: |
@@ -137,7 +137,7 @@ jobs:
             echo "changed=false" >> $GITHUB_OUTPUT
             echo "📦 @arivlabs/logger: unchanged ($CURRENT)"
           fi
-      
+
       - name: Publish @arivlabs/logger
         if: steps.logger-version.outputs.changed == 'true'
         run: |

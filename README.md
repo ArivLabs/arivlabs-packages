@@ -27,6 +27,7 @@ In your service's `package.json`:
 ```
 
 Then run:
+
 ```bash
 pnpm install
 ```
@@ -41,6 +42,7 @@ pnpm add ../arivlabs-packages/packages/logger
 ### Option 3: Published packages (future)
 
 When published to npm:
+
 ```bash
 pnpm add @arivlabs/logger
 ```
@@ -64,11 +66,13 @@ pnpm dev
 ## Adding a New Package
 
 1. Create package directory:
+
 ```bash
 mkdir -p packages/my-package/src
 ```
 
 2. Create `packages/my-package/package.json`:
+
 ```json
 {
   "name": "@arivlabs/my-package",
@@ -83,6 +87,7 @@ mkdir -p packages/my-package/src
 ```
 
 3. Install dependencies and build:
+
 ```bash
 pnpm install
 pnpm build
@@ -90,8 +95,8 @@ pnpm build
 
 ## Available Packages
 
-| Package | Description | Status |
-|---------|-------------|--------|
-| `@arivlabs/logger` | Structured logging with CloudWatch support | ✅ Ready |
-| `@arivlabs/prisma-crud` | Generic Prisma CRUD operations | 📋 Planned |
-| `@arivlabs/fastify-utils` | Fastify helpers and middleware | 📋 Planned |
+| Package                   | Description                                | Status     |
+| ------------------------- | ------------------------------------------ | ---------- |
+| `@arivlabs/logger`        | Structured logging with CloudWatch support | ✅ Ready   |
+| `@arivlabs/prisma-crud`   | Generic Prisma CRUD operations             | 📋 Planned |
+| `@arivlabs/fastify-utils` | Fastify helpers and middleware             | 📋 Planned |

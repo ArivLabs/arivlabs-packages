@@ -31,7 +31,7 @@ discoveryLog.info({ msg: 'Job created', jobId: '123' });
 const reqLog = logger.withContext({
   correlationId: 'abc-123',
   tenantId: 'tenant-1',
-  domain: 'discovery'
+  domain: 'discovery',
 });
 reqLog.info({ msg: 'Processing request' });
 ```
@@ -66,16 +66,17 @@ fields @timestamp, service, domain, @message
 
 ```typescript
 const logger = createLogger({
-  service: 'api-gateway',      // Required: service name
-  environment: 'production',    // Optional: defaults to NODE_ENV
-  level: 'info',               // Optional: debug, info, warn, error
-  pretty: false,               // Optional: defaults to true in development
+  service: 'api-gateway', // Required: service name
+  environment: 'production', // Optional: defaults to NODE_ENV
+  level: 'info', // Optional: debug, info, warn, error
+  pretty: false, // Optional: defaults to true in development
 });
 ```
 
 ## Log Format
 
 JSON output (production):
+
 ```json
 {
   "level": 30,
@@ -91,6 +92,7 @@ JSON output (production):
 ```
 
 Pretty output (development):
+
 ```
 10:30:00 Z [api-gateway:discovery] abc-123 Job created
 ```

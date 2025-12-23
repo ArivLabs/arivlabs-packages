@@ -98,8 +98,8 @@ export interface RequestContext {
  * - Filter by tenant: `fields @timestamp, @message | filter tenant_id = "xxx"`
  */
 export function createLogger(config: LoggerConfig): ArivLogger {
-  const isDevelopment = config.environment === 'development' ||
-    process.env.NODE_ENV === 'development';
+  const isDevelopment =
+    config.environment === 'development' || process.env.NODE_ENV === 'development';
   const isLocal = process.env.ENV === 'local';
   const shouldPrettyPrint = config.pretty ?? (isDevelopment || isLocal);
 

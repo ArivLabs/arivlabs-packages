@@ -11,7 +11,7 @@ describe('@arivlabs/logger', () => {
   describe('createLogger', () => {
     it('should create a logger with required service name', () => {
       const logger = createLogger({ service: 'api-gateway' });
-      
+
       expect(logger).toBeDefined();
       expect(typeof logger.info).toBe('function');
       expect(typeof logger.error).toBe('function');
@@ -69,16 +69,16 @@ describe('@arivlabs/logger', () => {
   describe('logger.domain()', () => {
     it('should create a child logger with domain', () => {
       const logger = createLogger({ service: 'api-gateway' }) as ArivLogger;
-      
+
       const discoveryLogger = logger.domain('discovery');
-      
+
       expect(logger.child).toHaveBeenCalledWith({ domain: 'discovery' });
       expect(discoveryLogger).toBeDefined();
     });
 
     it('should accept all valid domains', () => {
       const logger = createLogger({ service: 'api-gateway' }) as ArivLogger;
-      
+
       const domains: LogDomain[] = [
         'discovery',
         'auth',
@@ -106,14 +106,14 @@ describe('@arivlabs/logger', () => {
   describe('logger.withContext()', () => {
     it('should create a child logger with full context', () => {
       const logger = createLogger({ service: 'api-gateway' }) as ArivLogger;
-      
+
       const requestLogger = logger.withContext({
         correlationId: 'abc-123',
         userId: 'user-456',
         tenantId: 'tenant-789',
         domain: 'discovery',
       });
-      
+
       expect(logger.child).toHaveBeenCalledWith({
         domain: 'discovery',
         correlation_id: 'abc-123',
@@ -125,11 +125,11 @@ describe('@arivlabs/logger', () => {
 
     it('should create a child logger with minimal context', () => {
       const logger = createLogger({ service: 'api-gateway' }) as ArivLogger;
-      
+
       logger.withContext({
         correlationId: 'abc-123',
       });
-      
+
       expect(logger.child).toHaveBeenCalledWith({
         domain: undefined,
         correlation_id: 'abc-123',
@@ -140,12 +140,12 @@ describe('@arivlabs/logger', () => {
 
     it('should create a child logger with correlation and tenant only', () => {
       const logger = createLogger({ service: 'api-gateway' }) as ArivLogger;
-      
+
       logger.withContext({
         correlationId: 'abc-123',
         tenantId: 'tenant-789',
       });
-      
+
       expect(logger.child).toHaveBeenCalledWith({
         domain: undefined,
         correlation_id: 'abc-123',
@@ -191,7 +191,7 @@ describe('@arivlabs/logger', () => {
 
     it('should default to info level in production', () => {
       process.env.NODE_ENV = 'production';
-      const logger = createLogger({ 
+      const logger = createLogger({
         service: 'api-gateway',
         environment: 'production',
       });

@@ -23,7 +23,5 @@ module.exports = {
     },
   },
   clearMocks: true,
-  projects: [
-    '<rootDir>/packages/logger',
-  ],
+  projects: ['<rootDir>/packages/logger'],
 };
