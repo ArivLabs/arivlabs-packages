@@ -105,10 +105,7 @@ export interface RequestContext {
  * Wrap a pino log method to support flexible calling conventions
  */
 function wrapLogMethod(pinoLogger: PinoLogger, level: string): FlexibleLogFn {
-  return function (
-    msgOrObj: string | LogData,
-    dataOrMsg?: LogData | string
-  ): void {
+  return function (msgOrObj: string | LogData, dataOrMsg?: LogData | string): void {
     if (typeof msgOrObj === 'string') {
       // Called as: logger.info('message') or logger.info('message', { data })
       if (dataOrMsg && typeof dataOrMsg === 'object') {

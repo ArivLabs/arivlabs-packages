@@ -1,0 +1,17 @@
+#!/bin/sh
+
+# Run lint-staged (handles linting and formatting for staged files)
+echo "Running lint-staged..."
+pnpm lint-staged
+
+# Run format check on all files
+echo "Checking formatting..."
+pnpm format:check
+
+# Run TypeScript type check
+echo "Running TypeScript type check..."
+pnpm typecheck
+
+# Run tests
+echo "Running tests..."
+pnpm test

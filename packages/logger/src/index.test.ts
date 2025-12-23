@@ -92,32 +92,32 @@ describe('@arivlabs/logger', () => {
   describe('flexible calling convention', () => {
     it('should support intuitive style: logger.info(message, data)', () => {
       const logger = createLogger({ service: 'api-gateway' });
-      
+
       // Just verify no error is thrown and the method exists
       expect(() => logger.info('Server started', { port: 3000 })).not.toThrow();
     });
 
     it('should support message-only style: logger.info(message)', () => {
       const logger = createLogger({ service: 'api-gateway' });
-      
+
       expect(() => logger.info('Server started')).not.toThrow();
     });
 
     it('should support pino native style: logger.info({ msg, data })', () => {
       const logger = createLogger({ service: 'api-gateway' });
-      
+
       expect(() => logger.info({ msg: 'Server started', port: 3000 })).not.toThrow();
     });
 
     it('should support pino native style with separate message: logger.info(data, message)', () => {
       const logger = createLogger({ service: 'api-gateway' });
-      
+
       expect(() => logger.info({ port: 3000 }, 'Server started')).not.toThrow();
     });
 
     it('should work for all log levels', () => {
       const logger = createLogger({ service: 'api-gateway' });
-      
+
       expect(() => logger.trace('Trace message', { data: 1 })).not.toThrow();
       expect(() => logger.debug('Debug message', { data: 2 })).not.toThrow();
       expect(() => logger.info('Info message', { data: 3 })).not.toThrow();
@@ -168,7 +168,7 @@ describe('@arivlabs/logger', () => {
     it('should return a wrapped logger supporting flexible calls', () => {
       const logger = createLogger({ service: 'api-gateway' });
       const discoveryLogger = logger.domain('discovery');
-      
+
       expect(() => discoveryLogger.info('Job started', { jobId: '123' })).not.toThrow();
     });
   });
@@ -201,7 +201,7 @@ describe('@arivlabs/logger', () => {
     it('should return a wrapped logger supporting flexible calls', () => {
       const logger = createLogger({ service: 'api-gateway' });
       const reqLogger = logger.withContext({ correlationId: 'abc-123' });
-      
+
       expect(() => reqLogger.error('Request failed', { status: 500 })).not.toThrow();
     });
   });
@@ -209,9 +209,9 @@ describe('@arivlabs/logger', () => {
   describe('logger.child()', () => {
     it('should create a child logger with custom bindings', () => {
       const logger = createLogger({ service: 'api-gateway' });
-      
+
       const childLogger = logger.child({ customField: 'value' });
-      
+
       expect(childLogger).toBeDefined();
       expect(typeof childLogger.info).toBe('function');
     });
