@@ -57,13 +57,13 @@
   ],
   "author": "ArivLabs <hello@arivlabs.com>",
   "license": "MIT",
-  "homepage": "https://github.com/arivlabs/arivlabs-packages/tree/main/packages/logger#readme",
+  "homepage": "https://github.com/ArivLabs/arivlabs-packages/tree/main/packages/logger#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/arivlabs/arivlabs-packages.git",
+    "url": "git+https://github.com/ArivLabs/arivlabs-packages.git",
     "directory": "packages/logger"
   },
   "bugs": {
-    "url": "https://github.com/arivlabs/arivlabs-packages/issues"
+    "url": "https://github.com/ArivLabs/arivlabs-packages/issues"
   }
 }
