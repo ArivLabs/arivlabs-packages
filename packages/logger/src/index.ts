@@ -33,6 +33,68 @@ export type LogDomain =
   | 'system';
 
 /**
+ * Redaction configuration for masking sensitive data
+ */
+export interface RedactConfig {
+  /**
+   * Paths to redact (uses pino's redact syntax)
+   * Examples: ['password', 'secret', 'req.headers.authorization', '*.token']
+   */
+  paths?: string[];
+  /**
+   * String to replace sensitive values with (default: '[REDACTED]')
+   */
+  censor?: string;
+  /**
+   * Whether to remove the key entirely instead of masking (default: false)
+   */
+  remove?: boolean;
+}
+
+/**
+ * Default sensitive field patterns that are always redacted
+ * These are common security-sensitive fields
+ */
+export const DEFAULT_REDACT_PATHS = [
+  // Authentication & Secrets
+  'password',
+  'secret',
+  'token',
+  'apiKey',
+  'api_key',
+  'accessToken',
+  'access_token',
+  'refreshToken',
+  'refresh_token',
+  'sessionToken',
+  'session_token',
+  'secretAccessKey',
+  'secret_access_key',
+  'privateKey',
+  'private_key',
+
+  // Nested paths (common patterns)
+  '*.password',
+  '*.secret',
+  '*.token',
+  '*.apiKey',
+  '*.api_key',
+  '*.accessToken',
+  '*.secretAccessKey',
+  '*.privateKey',
+
+  // Request headers
+  'req.headers.authorization',
+  'req.headers.cookie',
+  'req.headers["x-api-key"]',
+
+  // AWS credentials
+  'credentials.accessKeyId',
+  'credentials.secretAccessKey',
+  'credentials.sessionToken',
+] as const;
+
+/**
  * Logger configuration options
  */
 export interface LoggerConfig {
@@ -44,6 +106,11 @@ export interface LoggerConfig {
   level?: string;
   /** Enable pretty printing (defaults to true in development) */
   pretty?: boolean;
+  /**
+   * Redaction configuration for masking sensitive data
+   * Sensitive fields are automatically masked. Use this to add custom paths.
+   */
+  redact?: RedactConfig;
 }
 
 /**
@@ -238,6 +305,9 @@ export function createLogger(config: LoggerConfig): ArivLogger {
   const isLocal = process.env.ENV === 'local';
   const shouldPrettyPrint = config.pretty ?? (isDevelopment || isLocal);
 
+  // Build redact paths: defaults + custom
+  const redactPaths: string[] = [...DEFAULT_REDACT_PATHS, ...(config.redact?.paths || [])];
+
   const pinoOptions: LoggerOptions = {
     name: config.service,
     level: config.level || process.env.LOG_LEVEL || (isDevelopment ? 'debug' : 'info'),
@@ -250,6 +320,13 @@ export function createLogger(config: LoggerConfig): ArivLogger {
 
     // Timestamp format (CloudWatch-friendly ISO 8601)
     timestamp: () => `,"timestamp":"${new Date().toISOString()}"`,
+
+    // Redact sensitive fields (masks by default, can be configured to remove)
+    redact: {
+      paths: redactPaths,
+      censor: config.redact?.censor ?? '[REDACTED]',
+      remove: config.redact?.remove ?? false,
+    },
 
     // Serializers for common objects
     serializers: {

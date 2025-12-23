@@ -1,4 +1,10 @@
-import { createLogger, type ArivLogger, type LogDomain, type ServiceName } from './index';
+import {
+  createLogger,
+  DEFAULT_REDACT_PATHS,
+  type ArivLogger,
+  type LogDomain,
+  type ServiceName,
+} from './index';
 
 // Mock pino module
 jest.mock('pino', () => {
@@ -86,6 +92,68 @@ describe('@arivlabs/logger', () => {
         pretty: false,
       });
       expect(logger).toBeDefined();
+    });
+
+    it('should create logger with custom redact paths', () => {
+      const logger = createLogger({
+        service: 'api-gateway',
+        redact: {
+          paths: ['customSecret', 'user.ssn'],
+        },
+      });
+      expect(logger).toBeDefined();
+    });
+
+    it('should create logger with custom redact censor', () => {
+      const logger = createLogger({
+        service: 'api-gateway',
+        redact: {
+          paths: ['secret'],
+          censor: '***MASKED***',
+        },
+      });
+      expect(logger).toBeDefined();
+    });
+
+    it('should create logger with redact remove option', () => {
+      const logger = createLogger({
+        service: 'api-gateway',
+        redact: {
+          paths: ['secret'],
+          remove: true,
+        },
+      });
+      expect(logger).toBeDefined();
+    });
+  });
+
+  describe('redaction defaults', () => {
+    it('should have default redact paths for common sensitive fields', () => {
+      expect(DEFAULT_REDACT_PATHS).toContain('password');
+      expect(DEFAULT_REDACT_PATHS).toContain('secret');
+      expect(DEFAULT_REDACT_PATHS).toContain('token');
+      expect(DEFAULT_REDACT_PATHS).toContain('apiKey');
+      expect(DEFAULT_REDACT_PATHS).toContain('accessToken');
+      expect(DEFAULT_REDACT_PATHS).toContain('refreshToken');
+      expect(DEFAULT_REDACT_PATHS).toContain('secretAccessKey');
+      expect(DEFAULT_REDACT_PATHS).toContain('privateKey');
+    });
+
+    it('should have default redact paths for nested fields', () => {
+      expect(DEFAULT_REDACT_PATHS).toContain('*.password');
+      expect(DEFAULT_REDACT_PATHS).toContain('*.secret');
+      expect(DEFAULT_REDACT_PATHS).toContain('*.token');
+    });
+
+    it('should have default redact paths for request headers', () => {
+      expect(DEFAULT_REDACT_PATHS).toContain('req.headers.authorization');
+      expect(DEFAULT_REDACT_PATHS).toContain('req.headers.cookie');
+    });
+
+    it('should have default redact paths for AWS credentials', () => {
+      expect(DEFAULT_REDACT_PATHS).toContain('credentials.accessKeyId');
+      expect(DEFAULT_REDACT_PATHS).toContain('credentials.secretAccessKey');
+      expect(DEFAULT_REDACT_PATHS).toContain('credentials.sessionToken');
     });
   });
 

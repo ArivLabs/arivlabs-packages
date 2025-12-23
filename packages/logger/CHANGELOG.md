@@ -5,6 +5,20 @@ All notable changes to `@arivlabs/logger` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2024-12-23
+
+### Added
+
+- **Sensitive data redaction**: Automatic masking of sensitive fields in logs
+- Default redaction for common sensitive fields: `password`, `secret`, `token`, `apiKey`, `accessToken`, `refreshToken`, `secretAccessKey`, `privateKey`, etc.
+- Support for nested field redaction with wildcard patterns (e.g., `*.password`)
+- Request header redaction: `authorization`, `cookie`, `x-api-key`
+- AWS credential redaction: `credentials.accessKeyId`, `credentials.secretAccessKey`, `credentials.sessionToken`
+- `redact` configuration option for custom redaction paths
+- Configurable censor text (default: `[REDACTED]`)
+- Option to remove redacted fields entirely instead of masking
+- Exported `DEFAULT_REDACT_PATHS` constant for reference
+
 ## [1.3.0] - 2024-12-23
 
 ### Added

@@ -77,6 +77,45 @@ const logger = createLogger({
   environment: 'production', // Optional: defaults to NODE_ENV
   level: 'info', // Optional: debug, info, warn, error
   pretty: false, // Optional: defaults to true in development
+  redact: {
+    // Optional: add custom paths to redact (in addition to defaults)
+    paths: ['user.ssn', 'customSecret'],
+    censor: '[MASKED]', // Optional: default is '[REDACTED]'
+  },
+});
+```
+
+## Sensitive Data Redaction
+
+The logger automatically redacts common sensitive fields from logs. This protects against accidental credential exposure.
+
+### Default Redacted Fields
+
+These fields are **automatically masked** (shown as `[REDACTED]`):
+
+| Category            | Fields                                                |
+| ------------------- | ----------------------------------------------------- |
+| **Secrets**         | `password`, `secret`, `token`, `apiKey`, `privateKey` |
+| **Auth Tokens**     | `accessToken`, `refreshToken`, `sessionToken`         |
+| **AWS Credentials** | `secretAccessKey`, `credentials.*`                    |
+| **Request Headers** | `req.headers.authorization`, `req.headers.cookie`     |
+| **Nested**          | `*.password`, `*.secret`, `*.token`, `*.apiKey`       |
+
+### Adding Custom Redaction Paths
+
+```typescript
+const logger = createLogger({
+  service: 'api-gateway',
+  redact: {
+    // Add project-specific sensitive fields
+    paths: [
+      'user.ssn', // Exact path
+      'customer.creditCard', // Exact path
+      '*.bankAccount', // Any object with bankAccount
+    ],
+    censor: '[MASKED]', // Custom mask text
+    remove: false, // Set true to remove key entirely
+  },
 });
 ```
 
