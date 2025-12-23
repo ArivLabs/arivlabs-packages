@@ -1,4 +1,5 @@
-import pino, { Logger as PinoLogger, LoggerOptions } from 'pino';
+import type { Logger as PinoLogger, LoggerOptions } from 'pino';
+import pino from 'pino';
 
 /**
  * Service names for ArivLabs services
