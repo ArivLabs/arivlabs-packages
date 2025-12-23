@@ -22,9 +22,10 @@ const logger = createLogger({ service: 'api-gateway' });
 // Basic logging - intuitive style (recommended)
 logger.info('Server started', { port: 3000 });
 
-// Error logging - use { err } for proper serialization
-logger.error('Request failed', { err: error }); // ✅ Correct
-// logger.error('Request failed', { error: err.message }); // ❌ Loses type/stack
+// Error logging - both { err } and { error } work
+logger.error('Request failed', { err: error }); // ✅ Works
+logger.error('Request failed', { error: error }); // ✅ Also works (auto-converted)
+// logger.error('Request failed', { error: err.message }); // ❌ Bad - pass the Error object, not .message
 
 // Also works: pino native style
 logger.info({ msg: 'Server started', port: 3000 });
@@ -105,18 +106,19 @@ Pretty output (development):
 
 ## Error Logging Best Practices
 
-Always use `{ err: errorObject }` when logging errors:
+Pass the Error object directly - both `err` and `error` keys work:
 
 ```typescript
 try {
   await someOperation();
 } catch (error) {
-  // ✅ Correct - pino serializes the full error
+  // ✅ Both work - error is auto-converted to err for pino
   logger.error('Operation failed', { err: error });
+  logger.error('Operation failed', { error }); // Same result
 
   // ❌ Bad - loses error type, stack, and custom properties
   logger.error('Operation failed', { error: error.message });
-  logger.error('Operation failed', { error: error.message, stack: error.stack });
+  logger.error('Operation failed', { message: error.message, stack: error.stack });
 }
 ```
 

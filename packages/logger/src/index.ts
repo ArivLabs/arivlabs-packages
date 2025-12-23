@@ -48,15 +48,18 @@ export interface LoggerConfig {
 
 /**
  * Log data object
- * Use `err` property for Error objects - pino will serialize them properly
+ * Pass Error objects as `err` or `error` - both work and will be serialized properly
  *
  * @example
- * logger.error('Request failed', { err: error }); // Correct - uses pino's error serializer
+ * logger.error('Request failed', { err: error });   // Works
+ * logger.error('Request failed', { error: error }); // Also works - auto-converted to err
  * logger.error('Request failed', { error: err.message }); // Bad - loses error type/stack
  */
 export type LogData = Record<string, unknown> & {
   /** Pass Error objects here for proper serialization (type, message, stack, custom props) */
   err?: Error | unknown;
+  /** Alternative to err - will be auto-converted to err if it's an Error object */
+  error?: Error | unknown;
 };
 
 /**
@@ -110,6 +113,19 @@ export interface RequestContext {
 }
 
 /**
+ * Normalize error properties in log data
+ * Converts `error` to `err` for proper pino serialization
+ */
+function normalizeLogData(data: LogData): LogData {
+  // If data has 'error' property that's an Error, rename to 'err' for pino serializer
+  if (data.error instanceof Error && !data.err) {
+    const { error, ...rest } = data;
+    return { ...rest, err: error };
+  }
+  return data;
+}
+
+/**
  * Wrap a pino log method to support flexible calling conventions
  */
 function wrapLogMethod(pinoLogger: PinoLogger, level: string): FlexibleLogFn {
@@ -117,8 +133,9 @@ function wrapLogMethod(pinoLogger: PinoLogger, level: string): FlexibleLogFn {
     if (typeof msgOrObj === 'string') {
       // Called as: logger.info('message') or logger.info('message', { data })
       if (dataOrMsg && typeof dataOrMsg === 'object') {
+        const normalized = normalizeLogData(dataOrMsg);
         (pinoLogger[level as keyof PinoLogger] as (obj: LogData, msg: string) => void)(
-          dataOrMsg,
+          normalized,
           msgOrObj
         );
       } else {
@@ -126,13 +143,14 @@ function wrapLogMethod(pinoLogger: PinoLogger, level: string): FlexibleLogFn {
       }
     } else {
       // Called as: logger.info({ msg: 'message', data }) or logger.info({ data }, 'message')
+      const normalized = normalizeLogData(msgOrObj);
       if (typeof dataOrMsg === 'string') {
         (pinoLogger[level as keyof PinoLogger] as (obj: LogData, msg: string) => void)(
-          msgOrObj,
+          normalized,
           dataOrMsg
         );
       } else {
-        (pinoLogger[level as keyof PinoLogger] as (obj: LogData) => void)(msgOrObj);
+        (pinoLogger[level as keyof PinoLogger] as (obj: LogData) => void)(normalized);
       }
     }
   };
@@ -187,9 +205,10 @@ function wrapLogger(pinoLogger: PinoLogger): ArivLogger {
  * // Basic logging (intuitive style - recommended)
  * logger.info('Server started', { port: 3000 });
  *
- * // Error logging - use { err } for proper serialization
- * logger.error('Request failed', { err: error }); // ✅ Correct
- * logger.error('Request failed', { error: err.message }); // ❌ Bad - loses info
+ * // Error logging - both { err } and { error } work
+ * logger.error('Request failed', { err: error });   // ✅ Works
+ * logger.error('Request failed', { error: error }); // ✅ Also works
+ * logger.error('Request failed', { error: err.message }); // ❌ Bad - pass Error object
  *
  * // Also works: pino native style
  * logger.info({ msg: 'Server started', port: 3000 });

@@ -125,6 +125,30 @@ describe('@arivlabs/logger', () => {
       expect(() => logger.error('Error message', { data: 5 })).not.toThrow();
       expect(() => logger.fatal('Fatal message', { data: 6 })).not.toThrow();
     });
+
+    it('should accept Error objects with { err } property', () => {
+      const logger = createLogger({ service: 'api-gateway' });
+      const testError = new Error('Test error');
+
+      expect(() => logger.error('Operation failed', { err: testError })).not.toThrow();
+    });
+
+    it('should accept Error objects with { error } property (auto-converts to err)', () => {
+      const logger = createLogger({ service: 'api-gateway' });
+      const testError = new Error('Test error');
+
+      expect(() => logger.error('Operation failed', { error: testError })).not.toThrow();
+    });
+
+    it('should handle both err and error properties together', () => {
+      const logger = createLogger({ service: 'api-gateway' });
+      const testError = new Error('Test error');
+
+      // When both are provided, err takes precedence (error is not converted)
+      expect(() =>
+        logger.error('Operation failed', { err: testError, error: 'string' })
+      ).not.toThrow();
+    });
   });
 
   describe('logger.domain()', () => {

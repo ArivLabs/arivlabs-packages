@@ -5,6 +5,14 @@ All notable changes to `@arivlabs/logger` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2024-12-23
+
+### Added
+
+- **Flexible error property**: Both `{ err: error }` and `{ error: error }` now work
+- Auto-converts `error` property to `err` for proper pino serialization
+- No more footgun - developers can use either naming convention
+
 ## [1.2.0] - 2024-12-23
 
 ### Added
