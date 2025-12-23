@@ -1,0 +1,37 @@
+# Dependencies (all levels)
+**/node_modules/
+.pnpm-store/
+
+# Build outputs (all levels)
+**/dist/
+**/*.tsbuildinfo
+
+# IDE
+.idea/
+.vscode/
+**/*.swp
+**/*.swo
+**/.DS_Store
+
+# Logs
+**/*.log
+**/npm-debug.log*
+**/pnpm-debug.log*
+
+# Environment
+**/.env
+**/.env.local
+**/.env.*.local
+
+# Test coverage
+**/coverage/
+**/.nyc_output/
+
+# Temporary files
+**/tmp/
+**/temp/
+**/*.tmp
+
+# Lock files (keep pnpm-lock.yaml, ignore others)
+**/package-lock.json
+**/yarn.lock
