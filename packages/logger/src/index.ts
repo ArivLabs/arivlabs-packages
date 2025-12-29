@@ -20,6 +20,7 @@ export type LogDomain =
   | 'discovery'
   | 'auth'
   | 'connectors'
+  | 'connector-types'
   | 'inventory'
   | 'lineage'
   | 'onboarding'
