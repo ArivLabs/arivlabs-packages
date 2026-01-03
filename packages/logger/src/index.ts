@@ -31,6 +31,7 @@ export type LogDomain =
   | 'storage'
   | 'email'
   | 'queue'
+  | 'feature-flags'
   | 'system';
 
 /**
