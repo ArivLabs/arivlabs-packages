@@ -23,6 +23,7 @@ export type LogDomain =
   | 'connector-types'
   | 'inventory'
   | 'lineage'
+  | 'intelligence'
   | 'onboarding'
   | 'proxy'
   | 'users'
