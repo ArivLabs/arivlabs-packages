@@ -50,7 +50,16 @@ jest.mock('pino', () => {
     err: jest.fn(),
   };
 
-  return { default: pino, __esModule: true };
+  // Add stdTimeFunctions for timestamp handling
+  const stdTimeFunctions = {
+    epochTime: () => `,"time":${Date.now()}`,
+    unixTime: () => `,"time":${Math.round(Date.now() / 1000.0)}`,
+    nullTime: () => '',
+    isoTime: () => `,"time":"${new Date(Date.now()).toISOString()}"`,
+    isoTimeNano: () => `,"time":"${new Date(Date.now()).toISOString()}"`,
+  };
+
+  return { default: pino, __esModule: true, stdTimeFunctions };
 });
 
 describe('@arivlabs/logger v2.0.0', () => {

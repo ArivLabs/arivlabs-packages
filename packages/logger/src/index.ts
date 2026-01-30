@@ -15,9 +15,11 @@
  * Architecture Notes:
  * - Production mode uses pino.destination() (SonicBoom) for buffered async writes
  * - SonicBoom provides flushSync() for crash-safe logging before process exit
- * - Pretty mode uses pino-pretty transport (worker thread) - flush is a no-op
+ * - Pretty mode uses pino-pretty transport (worker thread) - flush() is a no-op
+ * - Sync mode (enableAsync: false) writes immediately - flush() is a no-op
  * - pino.final() was deprecated in Node 14+ and removed in pino v10; we use
  *   direct flushSync() calls instead for crash-safe logging
+ * - Timestamps use ISO 8601 format with field name "time" (same as pino.stdTimeFunctions.isoTime)
  *
  * Operational Considerations:
  * - Async logging can lose buffered logs on abrupt process termination (SIGKILL, OOM)
@@ -42,7 +44,12 @@
  * ```
  */
 
-import pino, { type Logger as PinoLogger, type LoggerOptions, type DestinationStream } from 'pino';
+import pino, {
+  stdTimeFunctions,
+  type Logger as PinoLogger,
+  type LoggerOptions,
+  type DestinationStream,
+} from 'pino';
 
 // =============================================================================
 // TYPES
@@ -305,13 +312,16 @@ export interface ArivLogger {
   /**
    * Flush all buffered logs to destination synchronously.
    *
-   * **Important limitations:**
-   * - Only works in production mode (JSON output with SonicBoom destination)
-   * - In pretty mode (development), this is a no-op because pino-pretty runs
-   *   in a worker thread and doesn't expose flushSync()
-   * - May not flush all data if SonicBoom has internal buffering beyond the main buffer
+   * **Important: This is a no-op in the following cases:**
+   * - Pretty mode (development): pino-pretty runs in a worker thread without flushSync()
+   * - Sync mode (`enableAsync: false`): Writes are immediate, no buffer to flush
    *
-   * For guaranteed delivery, use shutdown() instead.
+   * Only performs work when ALL conditions are met:
+   * - Production mode (JSON output with SonicBoom destination)
+   * - Async mode enabled (`enableAsync: true` or production defaults)
+   * - Buffer has pending data (`minLength > 0`)
+   *
+   * For guaranteed delivery during shutdown, use shutdown() instead.
    */
   flush(): void;
 
@@ -482,15 +492,26 @@ function wrapLogger(pinoLogger: PinoLogger, state: LoggerState): ArivLogger {
     },
 
     flush(): void {
-      // Only works in production mode with SonicBoom destination
-      // Pretty mode uses a transport (worker thread) which doesn't expose flushSync
-      if (state.destination && state.isAsync && !state.isPrettyMode) {
-        try {
-          state.destination.flushSync();
-        } catch {
-          // flushSync can throw if the stream is already closed
-          // Silently ignore as this is a best-effort operation
-        }
+      // No-op conditions (early return):
+      // 1. Pretty mode: uses worker thread transport without flushSync()
+      // 2. No destination: nothing to flush
+      // 3. Sync mode: writes are immediate, no buffering
+      // 4. No buffering enabled: minLength === 0 means no buffer
+      if (state.isPrettyMode || !state.destination || !state.isAsync) {
+        return;
+      }
+
+      // Check if buffering is actually enabled (minLength > 0)
+      // When minLength is 0, writes go directly to fd without buffering
+      if (state.destination.minLength === 0) {
+        return;
+      }
+
+      try {
+        state.destination.flushSync();
+      } catch {
+        // flushSync can throw if the stream is already closed
+        // Silently ignore as this is a best-effort operation
       }
     },
 
@@ -638,9 +659,9 @@ export function createLogger(config: LoggerConfig): ArivLogger {
       ...config.base,
     },
 
-    // Timestamp format (CloudWatch-friendly ISO 8601)
-    // The leading comma is intentional - pino concatenates this into the JSON object
-    timestamp: () => `,"timestamp":"${new Date().toISOString()}"`,
+    // Timestamp in ISO 8601 format (e.g. "2025-01-30T14:00:00.000Z")
+    // Uses pino's built-in for optimal performance. Field name is "time".
+    timestamp: stdTimeFunctions.isoTime,
 
     // Redact sensitive fields
     redact: {
