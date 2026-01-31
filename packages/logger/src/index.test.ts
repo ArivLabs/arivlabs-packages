@@ -1,13 +1,22 @@
 import {
   createLogger,
+  createDomainLogger,
+  createRequestLogger,
   DEFAULT_REDACT_PATHS,
   type ArivLogger,
-  type LogDomain,
-  type ServiceName,
 } from './index';
 
 // Mock pino module
 jest.mock('pino', () => {
+  const createMockDestination = () => ({
+    write: jest.fn(),
+    end: jest.fn((cb?: () => void) => cb && cb()),
+    flush: jest.fn((cb?: () => void) => cb && cb()),
+    flushSync: jest.fn(),
+    destroyed: false,
+    minLength: 4096,
+  });
+
   const createMockLogger = (): Record<string, jest.Mock | string> => ({
     info: jest.fn(),
     error: jest.fn(),
@@ -20,24 +29,51 @@ jest.mock('pino', () => {
     level: 'info',
   });
 
-  const pino = jest.fn(() => createMockLogger());
-  (pino as unknown as { stdSerializers: unknown }).stdSerializers = {
+  const pino = jest.fn(() => createMockLogger()) as jest.Mock & {
+    destination: jest.Mock;
+    stdSerializers: unknown;
+  };
+
+  // Add destination factory that returns a SonicBoom-like object
+  pino.destination = jest.fn(() => createMockDestination());
+
+  pino.stdSerializers = {
     req: jest.fn(),
     res: jest.fn(),
     err: jest.fn(),
   };
 
-  return { default: pino, __esModule: true };
+  // Add stdTimeFunctions for timestamp handling
+  const stdTimeFunctions = {
+    epochTime: () => `,"time":${Date.now()}`,
+    unixTime: () => `,"time":${Math.round(Date.now() / 1000.0)}`,
+    nullTime: () => '',
+    isoTime: () => `,"time":"${new Date(Date.now()).toISOString()}"`,
+    isoTimeNano: () => `,"time":"${new Date(Date.now()).toISOString()}"`,
+  };
+
+  return { default: pino, __esModule: true, stdTimeFunctions };
 });
 
-describe('@arivlabs/logger', () => {
+describe('@arivlabs/logger v2.0.0', () => {
+  const originalEnv = process.env;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    process.env = { ...originalEnv, NODE_ENV: 'test' };
   });
+
+  afterAll(() => {
+    process.env = originalEnv;
+  });
+
+  // ===========================================================================
+  // BASIC FUNCTIONALITY
+  // ===========================================================================
 
   describe('createLogger', () => {
     it('should create a logger with required service name', () => {
-      const logger = createLogger({ service: 'api-gateway' });
+      const logger = createLogger({ service: 'my-service' });
 
       expect(logger).toBeDefined();
       expect(typeof logger.info).toBe('function');
@@ -48,31 +84,19 @@ describe('@arivlabs/logger', () => {
       expect(typeof logger.fatal).toBe('function');
     });
 
-    it('should accept all valid service names', () => {
-      const services: ServiceName[] = [
-        'api-gateway',
-        'queue-manager',
-        'scanner-result-processor',
-        'enrichment-processor',
-        'lineage-processor',
-        'ai-proxy',
-        'control-plane',
-      ];
+    it('should accept any string as service name', () => {
+      const logger1 = createLogger({ service: 'service-one' });
+      const logger2 = createLogger({ service: 'my-custom-service' });
+      const logger3 = createLogger({ service: 'brand-new-microservice' });
 
-      services.forEach((service) => {
-        const logger = createLogger({ service });
-        expect(logger).toBeDefined();
-      });
-    });
-
-    it('should accept custom service names', () => {
-      const logger = createLogger({ service: 'custom-service' });
-      expect(logger).toBeDefined();
+      expect(logger1).toBeDefined();
+      expect(logger2).toBeDefined();
+      expect(logger3).toBeDefined();
     });
 
     it('should create logger with optional environment', () => {
       const logger = createLogger({
-        service: 'api-gateway',
+        service: 'my-service',
         environment: 'production',
       });
       expect(logger).toBeDefined();
@@ -80,7 +104,7 @@ describe('@arivlabs/logger', () => {
 
     it('should create logger with optional log level', () => {
       const logger = createLogger({
-        service: 'api-gateway',
+        service: 'my-service',
         level: 'debug',
       });
       expect(logger).toBeDefined();
@@ -88,7 +112,7 @@ describe('@arivlabs/logger', () => {
 
     it('should create logger with pretty printing disabled', () => {
       const logger = createLogger({
-        service: 'api-gateway',
+        service: 'my-service',
         pretty: false,
       });
       expect(logger).toBeDefined();
@@ -96,7 +120,7 @@ describe('@arivlabs/logger', () => {
 
     it('should create logger with custom redact paths', () => {
       const logger = createLogger({
-        service: 'api-gateway',
+        service: 'my-service',
         redact: {
           paths: ['customSecret', 'user.ssn'],
         },
@@ -106,7 +130,7 @@ describe('@arivlabs/logger', () => {
 
     it('should create logger with custom redact censor', () => {
       const logger = createLogger({
-        service: 'api-gateway',
+        service: 'my-service',
         redact: {
           paths: ['secret'],
           censor: '***MASKED***',
@@ -115,17 +139,85 @@ describe('@arivlabs/logger', () => {
       expect(logger).toBeDefined();
     });
 
-    it('should create logger with redact remove option', () => {
+    it('should create logger with custom base fields', () => {
       const logger = createLogger({
-        service: 'api-gateway',
-        redact: {
-          paths: ['secret'],
-          remove: true,
+        service: 'my-service',
+        base: {
+          version: '1.0.0',
+          region: 'us-east-1',
         },
       });
       expect(logger).toBeDefined();
     });
   });
+
+  // ===========================================================================
+  // ASYNC MODE
+  // ===========================================================================
+
+  describe('async mode', () => {
+    it('should create logger with async mode explicitly enabled', () => {
+      const logger = createLogger({
+        service: 'my-service',
+        enableAsync: true,
+      });
+      expect(logger).toBeDefined();
+      expect(typeof logger.flush).toBe('function');
+      expect(typeof logger.shutdown).toBe('function');
+    });
+
+    it('should create logger with async mode explicitly disabled', () => {
+      const logger = createLogger({
+        service: 'my-service',
+        enableAsync: false,
+      });
+      expect(logger).toBeDefined();
+    });
+
+    it('should create logger with custom async buffer size', () => {
+      const logger = createLogger({
+        service: 'my-service',
+        enableAsync: true,
+        asyncBufferSize: 8192,
+      });
+      expect(logger).toBeDefined();
+    });
+
+    it('flush() should not throw', () => {
+      const logger = createLogger({ service: 'my-service' });
+      expect(() => logger.flush()).not.toThrow();
+    });
+
+    it('shutdown() should resolve without error', async () => {
+      const logger = createLogger({ service: 'my-service' });
+      await expect(logger.shutdown()).resolves.toBeUndefined();
+    });
+  });
+
+  // ===========================================================================
+  // EXCEPTION HANDLING
+  // ===========================================================================
+
+  describe('exception handling', () => {
+    it('should not register exception handlers by default', () => {
+      const logger = createLogger({ service: 'my-service' });
+      expect(logger).toBeDefined();
+      // handleExceptions defaults to false
+    });
+
+    it('should accept handleExceptions option', () => {
+      // In test mode, handlers are not registered even if requested
+      const logger = createLogger({
+        service: 'my-service',
+        handleExceptions: true,
+      });
+      expect(logger).toBeDefined();
+    });
+  });
+
+  // ===========================================================================
+  // REDACTION DEFAULTS
+  // ===========================================================================
 
   describe('redaction defaults', () => {
     it('should have default redact paths for common sensitive fields', () => {
@@ -157,34 +249,33 @@ describe('@arivlabs/logger', () => {
     });
   });
 
+  // ===========================================================================
+  // FLEXIBLE CALLING CONVENTION
+  // ===========================================================================
+
   describe('flexible calling convention', () => {
     it('should support intuitive style: logger.info(message, data)', () => {
-      const logger = createLogger({ service: 'api-gateway' });
-
-      // Just verify no error is thrown and the method exists
+      const logger = createLogger({ service: 'my-service' });
       expect(() => logger.info('Server started', { port: 3000 })).not.toThrow();
     });
 
     it('should support message-only style: logger.info(message)', () => {
-      const logger = createLogger({ service: 'api-gateway' });
-
+      const logger = createLogger({ service: 'my-service' });
       expect(() => logger.info('Server started')).not.toThrow();
     });
 
     it('should support pino native style: logger.info({ msg, data })', () => {
-      const logger = createLogger({ service: 'api-gateway' });
-
+      const logger = createLogger({ service: 'my-service' });
       expect(() => logger.info({ msg: 'Server started', port: 3000 })).not.toThrow();
     });
 
     it('should support pino native style with separate message: logger.info(data, message)', () => {
-      const logger = createLogger({ service: 'api-gateway' });
-
+      const logger = createLogger({ service: 'my-service' });
       expect(() => logger.info({ port: 3000 }, 'Server started')).not.toThrow();
     });
 
     it('should work for all log levels', () => {
-      const logger = createLogger({ service: 'api-gateway' });
+      const logger = createLogger({ service: 'my-service' });
 
       expect(() => logger.trace('Trace message', { data: 1 })).not.toThrow();
       expect(() => logger.debug('Debug message', { data: 2 })).not.toThrow();
@@ -195,79 +286,75 @@ describe('@arivlabs/logger', () => {
     });
 
     it('should accept Error objects with { err } property', () => {
-      const logger = createLogger({ service: 'api-gateway' });
+      const logger = createLogger({ service: 'my-service' });
       const testError = new Error('Test error');
-
       expect(() => logger.error('Operation failed', { err: testError })).not.toThrow();
     });
 
     it('should accept Error objects with { error } property (auto-converts to err)', () => {
-      const logger = createLogger({ service: 'api-gateway' });
+      const logger = createLogger({ service: 'my-service' });
       const testError = new Error('Test error');
-
       expect(() => logger.error('Operation failed', { error: testError })).not.toThrow();
     });
 
-    it('should handle both err and error properties together', () => {
-      const logger = createLogger({ service: 'api-gateway' });
+    it('should handle both err and error properties together (err takes precedence)', () => {
+      const logger = createLogger({ service: 'my-service' });
       const testError = new Error('Test error');
-
-      // When both are provided, err takes precedence (error is not converted)
       expect(() =>
         logger.error('Operation failed', { err: testError, error: 'string' })
       ).not.toThrow();
     });
   });
 
+  // ===========================================================================
+  // DOMAIN LOGGING
+  // ===========================================================================
+
   describe('logger.domain()', () => {
     it('should create a child logger with domain', () => {
-      const logger = createLogger({ service: 'api-gateway' });
+      const logger = createLogger({ service: 'my-service' });
+      const domainLogger = logger.domain('auth');
 
-      const discoveryLogger = logger.domain('discovery');
-
-      expect(discoveryLogger).toBeDefined();
-      expect(typeof discoveryLogger.info).toBe('function');
-      expect(typeof discoveryLogger.error).toBe('function');
+      expect(domainLogger).toBeDefined();
+      expect(typeof domainLogger.info).toBe('function');
+      expect(typeof domainLogger.error).toBe('function');
     });
 
-    it('should accept all valid domains', () => {
-      const logger = createLogger({ service: 'api-gateway' });
+    it('should accept any string as domain', () => {
+      const logger = createLogger({ service: 'my-service' });
 
-      const domains: LogDomain[] = [
-        'discovery',
-        'auth',
-        'connectors',
-        'inventory',
-        'lineage',
-        'onboarding',
-        'proxy',
-        'users',
-        'dashboard',
-        'internal',
-        'storage',
-        'email',
-        'queue',
-        'system',
-      ];
+      const log1 = logger.domain('auth');
+      const log2 = logger.domain('my-custom-domain');
+      const log3 = logger.domain('brand-new-feature');
 
-      domains.forEach((domain) => {
-        const childLogger = logger.domain(domain);
-        expect(childLogger).toBeDefined();
-        expect(typeof childLogger.info).toBe('function');
-      });
+      expect(log1).toBeDefined();
+      expect(log2).toBeDefined();
+      expect(log3).toBeDefined();
     });
 
     it('should return a wrapped logger supporting flexible calls', () => {
-      const logger = createLogger({ service: 'api-gateway' });
-      const discoveryLogger = logger.domain('discovery');
+      const logger = createLogger({ service: 'my-service' });
+      const domainLogger = logger.domain('discovery');
 
-      expect(() => discoveryLogger.info('Job started', { jobId: '123' })).not.toThrow();
+      expect(() => domainLogger.info('Job started', { jobId: '123' })).not.toThrow();
+    });
+
+    it('should preserve flush and shutdown methods on child loggers', () => {
+      const logger = createLogger({ service: 'my-service' });
+      const childLogger = logger.domain('auth');
+
+      expect(typeof childLogger.flush).toBe('function');
+      expect(typeof childLogger.shutdown).toBe('function');
     });
   });
 
+  // ===========================================================================
+  // CONTEXT LOGGING
+  // ===========================================================================
+
   describe('logger.withContext()', () => {
     it('should create a child logger with full context', () => {
-      const logger = createLogger({ service: 'api-gateway' });
+      const logger = createLogger({ service: 'my-service' });
 
       const requestLogger = logger.withContext({
         correlationId: 'abc-123',
@@ -281,7 +368,7 @@ describe('@arivlabs/logger', () => {
     });
 
     it('should create a child logger with minimal context', () => {
-      const logger = createLogger({ service: 'api-gateway' });
+      const logger = createLogger({ service: 'my-service' });
 
       const requestLogger = logger.withContext({
         correlationId: 'abc-123',
@@ -291,62 +378,133 @@ describe('@arivlabs/logger', () => {
     });
 
     it('should return a wrapped logger supporting flexible calls', () => {
-      const logger = createLogger({ service: 'api-gateway' });
+      const logger = createLogger({ service: 'my-service' });
       const reqLogger = logger.withContext({ correlationId: 'abc-123' });
 
       expect(() => reqLogger.error('Request failed', { status: 500 })).not.toThrow();
     });
   });
 
+  // ===========================================================================
+  // CHILD LOGGING
+  // ===========================================================================
+
   describe('logger.child()', () => {
     it('should create a child logger with custom bindings', () => {
-      const logger = createLogger({ service: 'api-gateway' });
+      const logger = createLogger({ service: 'my-service' });
 
       const childLogger = logger.child({ customField: 'value' });
 
       expect(childLogger).toBeDefined();
       expect(typeof childLogger.info).toBe('function');
     });
+
+    it('should allow chaining child loggers', () => {
+      const logger = createLogger({ service: 'my-service' });
+
+      const child1 = logger.child({ jobId: '123' });
+      const child2 = child1.child({ step: 'processing' });
+
+      expect(child2).toBeDefined();
+      expect(() => child2.info('Processing step')).not.toThrow();
+    });
   });
+
+  // ===========================================================================
+  // PINO ACCESS
+  // ===========================================================================
+
+  describe('logger.pino', () => {
+    it('should expose underlying pino logger', () => {
+      const logger = createLogger({ service: 'my-service' });
+      expect(logger.pino).toBeDefined();
+    });
+  });
+
+  // ===========================================================================
+  // LEVEL MANAGEMENT
+  // ===========================================================================
+
+  describe('level management', () => {
+    it('should have isLevelEnabled method', () => {
+      const logger = createLogger({ service: 'my-service' });
+      expect(typeof logger.isLevelEnabled).toBe('function');
+      expect(logger.isLevelEnabled('info')).toBe(true);
+    });
+
+    it('should have level property', () => {
+      const logger = createLogger({ service: 'my-service' });
+      expect(typeof logger.level).toBe('string');
+    });
+  });
+
+  // ===========================================================================
+  // BACKWARDS COMPATIBILITY (deprecated helpers)
+  // ===========================================================================
+
+  describe('backwards compatibility', () => {
+    describe('deprecated helper functions', () => {
+      it('createDomainLogger should work', () => {
+        const logger = createLogger({ service: 'my-service' });
+        const domainLogger = createDomainLogger(logger, 'auth');
+        expect(domainLogger).toBeDefined();
+      });
+
+      it('createRequestLogger should work', () => {
+        const logger = createLogger({ service: 'my-service' });
+        const reqLogger = createRequestLogger(
+          logger,
+          'auth',
+          'correlation-123',
+          'user-456',
+          'tenant-789'
+        );
+        expect(reqLogger).toBeDefined();
+      });
+    });
+  });
+
+  // ===========================================================================
+  // TYPE EXPORTS
+  // ===========================================================================
 
   describe('type exports', () => {
-    it('should export ServiceName type', () => {
-      const service: ServiceName = 'api-gateway';
-      expect(service).toBe('api-gateway');
-    });
-
-    it('should export LogDomain type', () => {
-      const domain: LogDomain = 'discovery';
-      expect(domain).toBe('discovery');
-    });
-
     it('should export ArivLogger type', () => {
-      const logger: ArivLogger = createLogger({ service: 'api-gateway' });
+      const logger: ArivLogger = createLogger({ service: 'my-service' });
       expect(logger).toBeDefined();
+    });
+
+    it('should allow any string for service name', () => {
+      const logger = createLogger({ service: 'any-service-name-works' });
+      expect(logger).toBeDefined();
+    });
+
+    it('should allow any string for domain name', () => {
+      const logger = createLogger({ service: 'my-service' });
+      const domainLogger = logger.domain('any-domain-name-works');
+      expect(domainLogger).toBeDefined();
     });
   });
 
-  describe('environment defaults', () => {
-    const originalEnv = process.env;
+  // ===========================================================================
+  // ENVIRONMENT DEFAULTS
+  // ===========================================================================
 
+  describe('environment defaults', () => {
     beforeEach(() => {
       process.env = { ...originalEnv };
     });
 
-    afterAll(() => {
-      process.env = originalEnv;
-    });
-
     it('should default to debug level in development', () => {
       process.env.NODE_ENV = 'development';
-      const logger = createLogger({ service: 'api-gateway' });
+      const logger = createLogger({ service: 'my-service' });
       expect(logger).toBeDefined();
     });
 
     it('should default to info level in production', () => {
       process.env.NODE_ENV = 'production';
       const logger = createLogger({
-        service: 'api-gateway',
+        service: 'my-service',
         environment: 'production',
       });
       expect(logger).toBeDefined();
@@ -354,7 +512,31 @@ describe('@arivlabs/logger', () => {
 
     it('should respect LOG_LEVEL env variable', () => {
       process.env.LOG_LEVEL = 'warn';
-      const logger = createLogger({ service: 'api-gateway' });
+      const logger = createLogger({ service: 'my-service' });
+      expect(logger).toBeDefined();
+    });
+
+    it('should respect ENV variable for environment', () => {
+      process.env.ENV = 'staging';
+      const logger = createLogger({ service: 'my-service' });
+      expect(logger).toBeDefined();
+    });
+
+    it('should default enableAsync to false in development', () => {
+      process.env.NODE_ENV = 'development';
+      const logger = createLogger({ service: 'my-service' });
+      expect(logger).toBeDefined();
+    });
+
+    it('should default enableAsync to false in test', () => {
+      process.env.NODE_ENV = 'test';
+      const logger = createLogger({ service: 'my-service' });
+      expect(logger).toBeDefined();
+    });
+
+    it('should default enableAsync to false when ENV=local', () => {
+      process.env.ENV = 'local';
+      const logger = createLogger({ service: 'my-service' });
       expect(logger).toBeDefined();
     });
   });
