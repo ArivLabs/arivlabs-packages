@@ -105,6 +105,7 @@ export const DEFAULT_REDACT_PATHS = [
   '*.apiKey',
   '*.api_key',
   '*.accessToken',
+  '*.refreshToken',
   '*.secretAccessKey',
   '*.privateKey',
 
@@ -403,6 +404,24 @@ interface LoggerState {
   cleanupHandlers?: () => void;
 }
 
+/**
+ * Type guard to verify a destination has SonicBoom's required methods.
+ * This provides runtime safety for the type cast from pino.destination().
+ */
+function isSonicBoomDestination(dest: unknown): dest is SonicBoomDestination {
+  return (
+    dest !== null &&
+    typeof dest === 'object' &&
+    'flushSync' in dest &&
+    typeof (dest as SonicBoomDestination).flushSync === 'function' &&
+    'flush' in dest &&
+    typeof (dest as SonicBoomDestination).flush === 'function' &&
+    'end' in dest &&
+    typeof (dest as SonicBoomDestination).end === 'function' &&
+    'destroyed' in dest
+  );
+}
+
 // =============================================================================
 // INTERNAL HELPERS
 // =============================================================================
@@ -509,9 +528,13 @@ function wrapLogger(pinoLogger: PinoLogger, state: LoggerState): ArivLogger {
 
       try {
         state.destination.flushSync();
-      } catch {
-        // flushSync can throw if the stream is already closed
-        // Silently ignore as this is a best-effort operation
+      } catch (err) {
+        // flushSync can throw if the stream is already closed or under extreme backpressure
+        // Log to stderr as a warning - this is a best-effort operation
+        console.error(
+          '[@arivlabs/logger] flushSync failed (buffer may not have been flushed):',
+          err instanceof Error ? err.message : String(err)
+        );
       }
     },
 
@@ -717,13 +740,25 @@ export function createLogger(config: LoggerConfig): ArivLogger {
     // Note: pino.final() was deprecated in Node 14+ and removed in pino v10.
     // We use direct flushSync() calls instead for crash-safe logging.
     // pino.destination() returns a SonicBoom instance
-    const destination = pino.destination({
+    const rawDestination = pino.destination({
       sync: !useAsync,
       minLength: useAsync ? (config.asyncBufferSize ?? 4096) : 0,
-    }) as unknown as SonicBoomDestination;
+    });
 
-    state.destination = destination;
-    pinoLogger = pino(basePinoOptions, destination);
+    // Validate the destination has the expected SonicBoom interface
+    if (isSonicBoomDestination(rawDestination)) {
+      state.destination = rawDestination;
+    } else {
+      // Fallback: destination doesn't have expected methods, disable crash-safe features
+      // This should never happen with standard pino, but provides runtime safety
+      console.warn(
+        '[@arivlabs/logger] Unexpected pino destination type. ' +
+          'Crash-safe logging (flushSync) will be unavailable.'
+      );
+      state.destination = null;
+    }
+
+    pinoLogger = pino(basePinoOptions, rawDestination);
   }
 
   state.pinoLogger = pinoLogger;

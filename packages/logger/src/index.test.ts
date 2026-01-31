@@ -11,7 +11,10 @@ jest.mock('pino', () => {
   const createMockDestination = () => ({
     write: jest.fn(),
     end: jest.fn((cb?: () => void) => cb && cb()),
+    flush: jest.fn((cb?: () => void) => cb && cb()),
     flushSync: jest.fn(),
+    destroyed: false,
+    minLength: 4096,
   });
 
   const createMockLogger = (): Record<string, jest.Mock | string> => ({
@@ -28,21 +31,11 @@ jest.mock('pino', () => {
 
   const pino = jest.fn(() => createMockLogger()) as jest.Mock & {
     destination: jest.Mock;
-    final: jest.Mock;
     stdSerializers: unknown;
   };
 
-  // Add destination factory
+  // Add destination factory that returns a SonicBoom-like object
   pino.destination = jest.fn(() => createMockDestination());
-
-  // Add final for crash-safe logging
-  pino.final = jest.fn((logger, handler) => {
-    return (err: Error | null, eventName: string) => {
-      if (handler) {
-        handler(err, logger, eventName);
-      }
-    };
-  });
 
   pino.stdSerializers = {
     req: jest.fn(),
